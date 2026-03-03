@@ -46,7 +46,7 @@ metadata:
 5. 你的月亮星座（如果知道的话，否则填"不确定"）
 6. 想每天几点接收运势？（例：07:30）
 7. 通过哪个平台接收？（例：telegram/discord/slack）
-8. 你的私信 ID（**必填**，运势报告将私信发送给你。例如 Telegram 的个人 chat_id、Discord 的用户 DM 频道 ID）
+8. 你的私信 ID（**必填**，运势报告将私信发送给你。例如 Telegram 的个人 chat_id、Discord 的用户 ID、Slack 的 Member ID）
 
 > 运势报告包含个人生辰和行为数据，建议通过私信接收，不要发到群组或公开频道。
 ```
@@ -72,7 +72,7 @@ metadata:
     "push_time": "<HH:MM>",
     "timezone": "<IANA timezone，例 Asia/Shanghai>",
     "channel": "<平台名，例如 telegram/discord/slack>",
-    "to": "<你的私信 ID，例如 Telegram 个人 chat_id，不可为空>"
+    "to": "<你的私信 ID：Telegram=个人 chat_id / Discord=用户 ID / Slack=Member ID，不可为空>"
   },
   "context": {
     "current_goals": "",
@@ -94,7 +94,8 @@ metadata:
 ```
 ⚠️ 推送目标未配置，无法创建定时任务。
    请编辑 ~/.openclaw/fortune-profile.json，填写 preferences.to 字段
-   （例如 Telegram chat_id 或 Discord 频道 ID），然后再次运行「今日运势」。
+   （Telegram=个人 chat_id / Discord=用户 ID / Slack=Member ID），
+   然后再次运行「今日运势」。
 ```
 
 `to` 已填写时，创建每日定时任务，在 `profile.preferences.push_time` 时自动触发本 skill，通过 `profile.preferences.channel` 以私信方式发送晨报到 `profile.preferences.to`（用户个人 ID）。任务触发时在消息中包含标签 `[DAILY_FORTUNE_CRON]`，以便 skill 识别为晨报模式。
