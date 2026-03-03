@@ -134,11 +134,11 @@ metadata:
 
 ### 2.3 本地命理计算
 
-调用本地脚本获取精确数据（脚本位于 `~/.openclaw/fortune-scripts/`）：
+调用本地脚本获取精确数据（脚本与 SKILL.md 同目录，位于 `{baseDir}/scripts/`）：
 
 **八字/干支计算：**
 ```
-exec: node ~/.openclaw/fortune-scripts/bazi.js \
+exec: node {baseDir}/scripts/bazi.js \
   --birth-date <profile.birth.date> \
   --birth-time <profile.birth.time> \
   --today <今日日期 YYYY-MM-DD>
@@ -147,7 +147,7 @@ exec: node ~/.openclaw/fortune-scripts/bazi.js \
 
 **紫微命盘计算：**
 ```
-exec: node ~/.openclaw/fortune-scripts/ziwei.js \
+exec: node {baseDir}/scripts/ziwei.js \
   --birth-date <profile.birth.date> \
   --birth-time <profile.birth.time>
 ```
@@ -156,8 +156,8 @@ exec: node ~/.openclaw/fortune-scripts/ziwei.js \
 **脚本不存在时的处理：**
 如果脚本文件不存在，提示用户：
 ```
-⚠️ 本地命理脚本未安装，八字/紫微将使用估算模式。
-   安装方法：将 bazi.js / ziwei.js 复制到 ~/.openclaw/fortune-scripts/
+⚠️ 命理脚本缺失，八字/紫微将使用估算模式。
+   请确认 {baseDir}/scripts/ 目录下存在 bazi.js 和 ziwei.js。
    详见 https://github.com/kentbot120/daily-fortune-skill
 ```
 并降级为基于命理原则的定性推断继续运行，不中断流程。
