@@ -164,19 +164,30 @@ exec: node {baseDir}/scripts/ziwei.js \
 
 ### 2.4 获取星座行星数据
 
-优先从 Astro.com（Astrodienst）抓取今日星历数据：
-- 当前各行星所在星座及度数
-- 当前处于逆行状态的行星
-- 今日月亮所在星座（影响情绪/直觉）
-- 与用户太阳星座的主要相位
+调用本地行星计算脚本（基于 Swiss Ephemeris，与 Astro.com 同精度）：
 
-> Astro.com 使用 Swiss Ephemeris，是专业占星师公认的权威数据源。
+```
+exec: node {baseDir}/scripts/planets.js \
+  --today <今日日期 YYYY-MM-DD> \
+  --sun-sign <profile.astrology.sun_sign>
+```
 
-**抓取失败时的降级处理（限流/网络问题）：**
-若抓取失败或返回无效内容，不中断流程，降级为：
-- 根据当前日期推算月亮星座（月亮约每 2.5 天换座，可近似推算）
-- 基于太阳星座的通用周期规律做定性分析
-- 在输出中注明「行星数据使用估算，建议核实」
+返回：
+- 10 颗行星当前所在星座及度数
+- 当前逆行行星列表
+- 今日月亮星座（影响情绪/直觉）
+- 与用户太阳星座的主要相位（合相/三分/六分/四分/对分）
+- `data_anchor` 字符串（供 Subagent B 直接使用）
+- `precision` 字段：`swiss_ephemeris`（有星历文件，角秒级）或 `moshier_fallback`（内置算法，约 ±1 角分，星座判断完全够用）
+
+**脚本不存在时的降级处理：**
+若脚本文件不存在，提示用户：
+```
+⚠️ 行星计算脚本缺失，星座数据将使用估算模式。
+   请确认 {baseDir}/scripts/planets.js 存在并已运行 npm install。
+   详见 https://github.com/kentbot120/daily-fortune-skill
+```
+并降级为基于太阳星座周期规律的定性分析，不中断流程。
 
 ---
 

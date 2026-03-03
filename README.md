@@ -5,11 +5,11 @@
 ## 功能
 
 - **三法合参**：八字/四柱 + 星座 + 紫微斗数，取三法共识，过滤冲突建议
-- **本地精确计算**：八字四柱、紫微命盘均通过本地脚本算法得出，不依赖 LLM 猜测
-- **星座行星数据**：从 Astro.com（Swiss Ephemeris）获取真实行星位置，agent 自行解读
+- **本地精确计算**：八字四柱、紫微命盘、行星位置均通过本地脚本算法得出，不依赖 LLM 猜测
+- **Swiss Ephemeris 行星数据**：与 Astro.com 同精度的本地行星位置计算（无需网络）
 - **OpenClaw 个性化**：结合今日定时任务安排、近期聊天主题、活跃时间、昨日完成率、长期记忆
 - **双模式输出**：
-  - **晨报模式**（Cron 自动推送）：≤350字速览，每天指定时间推送到指定频道
+  - **晨报模式**（Cron 自动推送）：≤400字速览，每天指定时间推送到指定频道
   - **深度模式**（手动召唤）：完整五节分析，含逐时辰建议和行动清单
 
 ## 文件结构
@@ -17,9 +17,12 @@
 ```
 daily-fortune/
 ├── README.md            # 本文件
-├── daily-fortune.md     # OpenClaw Skill 主文件（安装时重命名为 SKILL.md）
-├── bazi.js              # 八字四柱本地计算脚本
-└── ziwei.js             # 紫微斗数本地计算脚本
+├── SKILL.md             # OpenClaw Skill 主文件
+├── package.json         # Node.js 依赖（sweph）
+└── scripts/
+    ├── bazi.js          # 八字四柱本地计算脚本
+    ├── ziwei.js         # 紫微斗数本地计算脚本
+    └── planets.js       # 行星位置计算脚本（Swiss Ephemeris）
 ```
 
 ## 安装
@@ -38,14 +41,18 @@ daily-fortune/
 cp -r . ~/.openclaw/skills/daily-fortune
 ```
 
-skill 目录结构与安装后完全一致，无需单独处理脚本。
-
-**2. 验证安装**
+**2. 安装依赖**
 
 ```bash
-# 验证 skill 已被识别
-openclaw skills list | grep daily-fortune
+cd ~/.openclaw/skills/daily-fortune
+npm install
+```
 
+> 这会安装 `sweph`（Swiss Ephemeris Node.js 绑定，GPL 许可），用于本地行星位置精确计算。
+
+**3. 验证安装**
+
+```bash
 # 验证脚本可运行（替换为你的生日）
 node ~/.openclaw/skills/daily-fortune/scripts/bazi.js \
   --birth-date 1990-05-15 \
@@ -55,11 +62,15 @@ node ~/.openclaw/skills/daily-fortune/scripts/bazi.js \
 node ~/.openclaw/skills/daily-fortune/scripts/ziwei.js \
   --birth-date 1990-05-15 \
   --birth-time 08:30
+
+node ~/.openclaw/skills/daily-fortune/scripts/planets.js \
+  --today $(date +%Y-%m-%d) \
+  --sun-sign 金牛
 ```
 
 **4. 首次启动**
 
-在 OpenClaw 中发送任意一条消息触发初始化引导：
+在 OpenClaw 中发送：
 
 ```
 今日运势
@@ -68,14 +79,6 @@ node ~/.openclaw/skills/daily-fortune/scripts/ziwei.js \
 Skill 会引导你填写个人档案（生辰、星座偏好、推送配置），完成后自动创建每日定时任务。
 
 档案保存在 `~/.openclaw/fortune-profile.json`，可随时手动编辑。
-
-### 一键安装脚本
-
-```bash
-# 在 clone 目录下运行
-cp -r . ~/.openclaw/skills/daily-fortune
-echo "✅ 安装完成。在 OpenClaw 中发送「今日运势」开始使用。"
-```
 
 ## 使用
 
@@ -96,12 +99,6 @@ echo "✅ 安装完成。在 OpenClaw 中发送「今日运势」开始使用。
 ### 定时推送（晨报模式）
 
 首次初始化后 Skill 自动配置，每天指定时间通过你选择的频道推送晨报。
-
-查看/管理定时任务：
-
-```bash
-openclaw cron list
-```
 
 ## 个人档案
 
@@ -152,9 +149,12 @@ openclaw cron list
 - 大限步长由五行局决定（水二/木三/金四/土五/火六局）
 - 流日宫位 = 命宫 + 流月偏移 + 农历日数
 
-### 星座数据
+### 行星位置（planets.js）
 
-从 Astro.com（Astrodienst，瑞士）获取当日真实星历数据，包含行星位置、逆行状态、月亮星座，由 agent 基于数据解读，不使用编辑内容。
+- 基于 `sweph@2.10.0-10`（Swiss Ephemeris GPL 版本）
+- 无星历文件时自动降级为内置 Moshier 算法（精度约 ±1 角分，星座判断完全够用）
+- 有 `sepl_18.se1` + `semo_18.se1` 星历文件时精度达角秒级，与 Astro.com 完全一致
+- 计算 10 颗行星位置、逆行状态、与用户太阳星座相位
 
 ## 注意事项
 
