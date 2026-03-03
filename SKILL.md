@@ -186,10 +186,12 @@ exec: node {baseDir}/scripts/planets.js \
 若脚本文件不存在，提示用户：
 ```
 ⚠️ 行星计算脚本缺失，星座数据将使用估算模式。
-   请确认 {baseDir}/scripts/planets.js 存在并已运行 npm install。
+   请确认 {baseDir}/scripts/planets.js 存在。
    详见 https://github.com/kentbot120/daily-fortune-skill
 ```
 并降级为基于太阳星座周期规律的定性分析，不中断流程。
+
+> `planets.js` 首次运行时会自动安装 `sweph` 依赖，无需手动 `npm install`。
 
 ---
 

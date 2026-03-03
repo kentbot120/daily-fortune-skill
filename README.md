@@ -18,11 +18,10 @@
 daily-fortune/
 ├── README.md            # 本文件
 ├── SKILL.md             # OpenClaw Skill 主文件
-├── package.json         # Node.js 依赖（sweph）
 └── scripts/
     ├── bazi.js          # 八字四柱本地计算脚本
     ├── ziwei.js         # 紫微斗数本地计算脚本
-    └── planets.js       # 行星位置计算脚本（Swiss Ephemeris）
+    └── planets.js       # 行星位置计算脚本（Swiss Ephemeris，首次运行自动安装依赖）
 ```
 
 ## 安装
@@ -41,16 +40,7 @@ daily-fortune/
 cp -r . ~/.openclaw/skills/daily-fortune
 ```
 
-**2. 安装依赖**
-
-```bash
-cd ~/.openclaw/skills/daily-fortune
-npm install
-```
-
-> 这会安装 `sweph`（Swiss Ephemeris Node.js 绑定，GPL 许可），用于本地行星位置精确计算。
-
-**3. 验证安装**
+**2. 验证安装**
 
 ```bash
 # 验证脚本可运行（替换为你的生日）

@@ -112,13 +112,21 @@ const rawSign = args['sun-sign'] || null;
 const sunSign = rawSign ? rawSign.replace(/座$/, '') : null;
 const ephePath = args['ephe-path'] || null;
 
-// 尝试加载 sweph
+// 尝试加载 sweph，不存在时自动安装（无需手动 npm install）
 let sweph = null;
 let precision = 'swiss_ephemeris';
 try {
   sweph = require('sweph');
 } catch {
-  precision = 'moshier_fallback';
+  try {
+    const { execSync } = require('child_process');
+    const path = require('path');
+    const dir = path.dirname(__filename);
+    execSync('npm install sweph@2.10.0-10 --no-save --silent', { cwd: dir, stdio: 'ignore' });
+    sweph = require(path.join(dir, 'node_modules', 'sweph'));
+  } catch {
+    precision = 'moshier_fallback';
+  }
 }
 
 let planetResults = [];
