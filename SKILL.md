@@ -44,9 +44,11 @@ metadata:
 3. 出生地点（例：上海）
 4. 你的上升星座（如果知道的话，否则填"不确定"）
 5. 你的月亮星座（如果知道的话，否则填"不确定"）
-6. 想每天几点推送运势？（例：07:30）
-7. 推送到哪个频道？（例：telegram/discord/slack）
-8. 推送目标（频道 ID 或群组名，**必填**，否则无法推送晨报。例如 Telegram 的 chat_id、Discord 的频道 ID）
+6. 想每天几点接收运势？（例：07:30）
+7. 通过哪个平台接收？（例：telegram/discord/slack）
+8. 你的私信 ID（**必填**，运势报告将私信发送给你。例如 Telegram 的个人 chat_id、Discord 的用户 DM 频道 ID）
+
+> 运势报告包含个人生辰和行为数据，建议通过私信接收，不要发到群组或公开频道。
 ```
 
 收集完信息后，创建档案文件：
@@ -69,8 +71,8 @@ metadata:
   "preferences": {
     "push_time": "<HH:MM>",
     "timezone": "<IANA timezone，例 Asia/Shanghai>",
-    "channel": "<频道名>",
-    "to": "<频道目标，例如 Telegram chat ID，不可为空>"
+    "channel": "<平台名，例如 telegram/discord/slack>",
+    "to": "<你的私信 ID，例如 Telegram 个人 chat_id，不可为空>"
   },
   "context": {
     "current_goals": "",
@@ -95,13 +97,13 @@ metadata:
    （例如 Telegram chat_id 或 Discord 频道 ID），然后再次运行「今日运势」。
 ```
 
-`to` 已填写时，创建每日定时任务，在 `profile.preferences.push_time` 时自动触发本 skill，通过 `profile.preferences.channel` 和 `profile.preferences.to` 推送晨报给用户。任务触发时在消息中包含标签 `[DAILY_FORTUNE_CRON]`，以便 skill 识别为晨报模式。
+`to` 已填写时，创建每日定时任务，在 `profile.preferences.push_time` 时自动触发本 skill，通过 `profile.preferences.channel` 以私信方式发送晨报到 `profile.preferences.to`（用户个人 ID）。任务触发时在消息中包含标签 `[DAILY_FORTUNE_CRON]`，以便 skill 识别为晨报模式。
 
 任务创建成功后，将返回的任务 ID 写入档案的 `cron_job_id` 字段，并提示用户：
 
 ```
 ✅ 已配置每日运势定时推送
-   将在每天 <push_time> 通过 <channel> 发送晨报
+   将在每天 <push_time> 通过 <channel> 私信发送晨报
 
 现在为你生成今天的运势...
 ```
