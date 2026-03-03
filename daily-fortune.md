@@ -46,7 +46,7 @@ metadata:
 5. 你的月亮星座（如果知道的话，否则填"不确定"）
 6. 想每天几点推送运势？（例：07:30）
 7. 推送到哪个频道？（例：telegram/discord/slack）
-8. 推送目标（频道 ID 或群组名，不确定可以跳过，之后再配置）
+8. 推送目标（频道 ID 或群组名，**必填**，否则无法推送晨报。例如 Telegram 的 chat_id、Discord 的频道 ID）
 ```
 
 收集完信息后，创建档案文件：
@@ -70,7 +70,7 @@ metadata:
     "push_time": "<HH:MM>",
     "timezone": "<IANA timezone，例 Asia/Shanghai>",
     "channel": "<频道名>",
-    "to": "<频道目标，例如 Telegram chat ID，可为 null>"
+    "to": "<频道目标，例如 Telegram chat ID，不可为空>"
   },
   "context": {
     "current_goals": "",
@@ -86,7 +86,16 @@ metadata:
 
 读取档案中的 `cron_job_id` 字段。
 
-**如果为 null**，说明尚未配置每日定时推送。创建一个每日定时任务，在 `profile.preferences.push_time` 时自动触发本 skill，通过 `profile.preferences.channel` 推送晨报给用户。任务触发时在消息中包含标签 `[DAILY_FORTUNE_CRON]`，以便 skill 识别为晨报模式。
+**如果为 null**，说明尚未配置每日定时推送。
+
+创建前先校验 `profile.preferences.to` 是否已填写。如果为空，停止并提示用户：
+```
+⚠️ 推送目标未配置，无法创建定时任务。
+   请编辑 ~/.openclaw/fortune-profile.json，填写 preferences.to 字段
+   （例如 Telegram chat_id 或 Discord 频道 ID），然后再次运行「今日运势」。
+```
+
+`to` 已填写时，创建每日定时任务，在 `profile.preferences.push_time` 时自动触发本 skill，通过 `profile.preferences.channel` 和 `profile.preferences.to` 推送晨报给用户。任务触发时在消息中包含标签 `[DAILY_FORTUNE_CRON]`，以便 skill 识别为晨报模式。
 
 任务创建成功后，将返回的任务 ID 写入档案的 `cron_job_id` 字段，并提示用户：
 
@@ -148,19 +157,26 @@ exec: node ~/.openclaw/fortune-scripts/ziwei.js \
 如果脚本文件不存在，提示用户：
 ```
 ⚠️ 本地命理脚本未安装，八字/紫微将使用估算模式。
-   运行 `openclaw skill setup daily-fortune` 可安装完整计算脚本。
+   安装方法：将 bazi.js / ziwei.js 复制到 ~/.openclaw/fortune-scripts/
+   详见 https://github.com/kentbot120/daily-fortune-skill
 ```
 并降级为基于命理原则的定性推断继续运行，不中断流程。
 
 ### 2.4 获取星座行星数据
 
-从 Astro.com（Astrodienst）抓取今日星历数据：
+优先从 Astro.com（Astrodienst）抓取今日星历数据：
 - 当前各行星所在星座及度数
 - 当前处于逆行状态的行星
 - 今日月亮所在星座（影响情绪/直觉）
 - 与用户太阳星座的主要相位
 
 > Astro.com 使用 Swiss Ephemeris，是专业占星师公认的权威数据源。
+
+**抓取失败时的降级处理（限流/网络问题）：**
+若抓取失败或返回无效内容，不中断流程，降级为：
+- 根据当前日期推算月亮星座（月亮约每 2.5 天换座，可近似推算）
+- 基于太阳星座的通用周期规律做定性分析
+- 在输出中注明「行星数据使用估算，建议核实」
 
 ---
 
