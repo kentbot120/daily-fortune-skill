@@ -107,7 +107,9 @@ function fallbackPlanetData(today) {
 // ── 主程序 ────────────────────────────────────────────
 const args   = parseArgs(process.argv.slice(2));
 const today  = args['today'] || new Date().toISOString().split('T')[0];
-const sunSign = args['sun-sign'] || null;
+// 兼容带「座」后缀（如「水瓶座」→「水瓶」）和英文全名（如「Aquarius」）
+const rawSign = args['sun-sign'] || null;
+const sunSign = rawSign ? rawSign.replace(/座$/, '') : null;
 const ephePath = args['ephe-path'] || null;
 
 // 尝试加载 sweph
