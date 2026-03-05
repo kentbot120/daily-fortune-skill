@@ -253,30 +253,36 @@ exec: node {baseDir}/scripts/planets.js \
 1. 用户命盘（出生四柱）
 2. 今日四柱
 
-你的任务：基于八字命理原则，分析今日日柱与用户命盘的关系，
-对事业/财运/人际/健康四个维度给出评分和简短依据。
+你的任务：基于八字命理原则，对今日日柱与用户命盘的关系做完整分析，
+对事业/财运/人际/健康四个维度各写一段详细推演，供主 agent 汇总使用。
 
 输出规则：
-- 严格输出 JSON，格式见下方 schema，不输出任何其他文字
-- reasoning：命理依据，15字内，直接说干支关系和五行含义
-- advice：具体建议，20字内，说做什么，不用「注意」「小心」等模糊词
-- signal：positive（有利）/ neutral（平稳）/ caution（需注意）
-- score：1-5整数
-- best_time：今日吉时时段（如「09:00-11:00」）
-- data_anchor：3个关键数据点，用「·」分隔
+- 严格输出 JSON，不输出任何其他文字
+- reasoning：完整的命理推演过程，不限字数。说清楚：
+    - 今日日柱是什么、与命盘哪些柱位产生何种刑冲合害
+    - 五行今日旺衰如何影响日主
+    - 由此推导出对该维度的具体影响逻辑
+  不得只写结论，必须写出推理链
+- advice：基于 reasoning 得出的具体行动建议，说做什么、怎么做
+- signal：positive / neutral / caution（基于完整分析得出，不得随意给）
+- score：1-5 整数，与 signal 一致（positive≥4，neutral=3，caution≤2）
+- best_time：今日吉时时段（如「09:00-11:00」），说明为何此时段吉
+- data_anchor：最能代表今日命理格局的 3 个数据点，用「·」分隔
 - theme：今日整体主题，15字内
+- cautions：今日需回避的具体事项列表（可为空数组）
 
 输出 schema：
 {
   "method": "八字",
   "data_anchor": "<干支1> · <干支2> · <五行关系>",
   "dimensions": {
-    "career":        { "score": 0, "signal": "", "reasoning": "", "advice": "" },
-    "wealth":        { "score": 0, "signal": "", "reasoning": "", "advice": "" },
-    "relationships": { "score": 0, "signal": "", "reasoning": "", "advice": "" },
-    "health":        { "score": 0, "signal": "", "reasoning": "", "advice": "" }
+    "career":        { "score": 0, "signal": "", "reasoning": "<完整推演>", "advice": "<具体建议>" },
+    "wealth":        { "score": 0, "signal": "", "reasoning": "<完整推演>", "advice": "<具体建议>" },
+    "relationships": { "score": 0, "signal": "", "reasoning": "<完整推演>", "advice": "<具体建议>" },
+    "health":        { "score": 0, "signal": "", "reasoning": "<完整推演>", "advice": "<具体建议>" }
   },
   "best_time": "",
+  "best_time_reason": "<为何此时段吉，一句话>",
   "cautions": [],
   "theme": ""
 }
@@ -295,23 +301,24 @@ exec: node {baseDir}/scripts/planets.js \
 1. 用户星盘信息（太阳/上升/月亮星座）
 2. 今日真实行星位置数据（来自 Swiss Ephemeris）
 
-你的任务：基于真实行星数据，分析今日星象对用户的影响，
-对事业/财运/人际/健康四个维度给出评分和简短依据。
+你的任务：基于真实行星数据，对今日星象做完整分析，
+对事业/财运/人际/健康四个维度各写一段详细推演，供主 agent 汇总使用。
 
 输出规则：
-- 严格输出 JSON，格式与八字 schema 相同
-- reasoning：必须引用具体行星数据（如「月亮摩羯合土星」），不能泛泛而谈
-- advice：具体行动建议，不做星座性格解读
-- data_anchor：3个今日关键行星数据点（星座+度数或逆行状态）
-- 如果行星数据缺失或抓取失败：
-  - data_anchor 注明「行星数据估算」
-  - reasoning 改为基于太阳星座周期规律的通用分析
-  - 所有 score 统一降 1 分（最低 1 分）
+- 严格输出 JSON，格式与八字 schema 相同，不输出任何其他文字
+- reasoning：完整的占星推演过程，不限字数。必须说清楚：
+    - 哪颗行星今日处于什么星座/度数，是否逆行
+    - 该行星与用户太阳/上升/月亮星座形成什么相位（合/三分/六分/四分/对分）
+    - 由此对该维度产生什么具体影响，为什么
+  必须引用具体行星名称和相位，不得泛泛谈星座性格
+- advice：基于 reasoning 得出的具体行动建议
+- data_anchor：3 个最关键的今日行星数据点（星座+相位或逆行状态）
+- 行星数据估算时：data_anchor 注明「行星数据估算」，score 整体降 1 分
 ```
 
 **输入数据：**
 - 用户星座信息：`profile.astrology`（sun_sign / rising_sign / moon_sign）
-- 行星数据：2.4 节抓取结果（或降级估算数据）
+- 行星数据：2.4 节 planets.js 的完整 JSON 输出
 
 ---
 
@@ -324,15 +331,20 @@ exec: node {baseDir}/scripts/planets.js \
 1. 用户紫微命盘数据（命宫主星、五行局、大限/小限）
 2. 今日流日宫位数据
 
-你的任务：基于紫微斗数原则，分析今日流日对用户命盘的影响，
-对事业/财运/人际/健康四个维度给出评分和简短依据。
+你的任务：基于紫微斗数原则，对今日流日格局做完整分析，
+对事业/财运/人际/健康四个维度各写一段详细推演，供主 agent 汇总使用。
 
 输出规则：
-- 严格输出 JSON，格式与八字 schema 相同
-- reasoning：引用宫位和主星（如「流日官禄宫，武曲当令」），15字内
-- advice：具体建议，20字内
-- data_anchor：命宫主星 · 当前大限阶段 · 今日流日宫位
-- best_time：根据流日宫位特性给出适合时段
+- 严格输出 JSON，格式与八字 schema 相同，不输出任何其他文字
+- reasoning：完整的紫微推演过程，不限字数。必须说清楚：
+    - 今日流日宫位是哪个宫，该宫的主星是谁
+    - 该主星的性质（化禄/化权/化科/化忌，或本星特性）
+    - 与用户命宫主星、当前大限的叠加关系
+    - 由此对该维度产生什么具体影响
+  不得只说「官禄宫吉」，必须解释为什么吉、吉在哪里
+- advice：基于 reasoning 得出的具体行动建议
+- data_anchor：命宫主星 · 当前大限阶段 · 今日流日宫位+主星
+- best_time：根据流日宫位和主星特性给出适合时段，并说明原因
 ```
 
 **输入数据：** 将 2.3 节 ziwei.js 的完整 JSON 输出作为输入传入。
@@ -341,26 +353,36 @@ exec: node {baseDir}/scripts/planets.js \
 
 ### 3.2 主 Agent：共识合并
 
-收集三个 subagent 的 JSON 输出后，按以下规则合并：
+收集三个 subagent 的完整 JSON 输出后，**先通读三份详细 reasoning，再做合并判断**。合并的质量取决于对 reasoning 的理解深度，不得仅看 signal/score 机械合并。
 
 **逐维度合并（career / wealth / relationships / health）：**
 
-| 三法 signal 组合 | 合并结果 | score 取值 |
-|----------------|---------|-----------|
-| 三个 positive | 强化正向，输出最强建议 | 三法最高分 |
-| 两 positive 一 neutral | 正向输出 | 三法平均，向上取整 |
-| 两 positive 一 caution | 降为 neutral，取最保守 advice | 三法最低分 |
-| 两 caution 及以上 | 输出警示，不给积极建议 | 三法最低分 |
-| 含 caution 的 advice 与 positive 的 advice 冲突 | 静默丢弃冲突建议，输出中性表述 | 平均分 |
+第一步：阅读三法该维度的完整 reasoning，理解各自的推演逻辑和结论依据。
+
+第二步：按 signal 组合确定合并方向：
+
+| 三法 signal 组合 | 合并方向 | score |
+|----------------|---------|-------|
+| 三个 positive | 综合三份 reasoning 提炼最有力的共识建议 | 三法最高分 |
+| 两 positive 一 neutral | 以正向为主，吸收 neutral 的补充观点 | 三法平均，向上取整 |
+| 两 positive 一 caution | 降为 neutral，caution 的 reasoning 必须体现在 avoid 字段 | 三法最低分 |
+| 两 caution 及以上 | 以警示为主，从 reasoning 中找具体风险点写入 caution | 三法最低分 |
+| 有冲突 | 静默丢弃冲突建议，从共同 reasoning 中提取中性表述 | 平均分 |
+
+第三步：根据合并结果，从三份 reasoning 中提炼出：
+- 本维度最核心的一句 advice（约 30 字）
+- good_for：三法推演中共同支持的适合事项
+- avoid：三法推演中有任何一法提出 caution 的事项
+- reason：最能代表共识依据的命理数据点（≤10字，用于展示）
 
 **best_time 合并：**
-取三法时段的重叠区间。无重叠则不输出具体时间，改为「上/下午各有吉时」。
+阅读三法 best_time 及其原因，取重叠时段；无重叠则选最多法支持的时段，并注明「以 XX 法为参考」。
 
 **theme 合并：**
-主 agent 综合三法 theme，自行归纳一句话，不直接拼接。
+综合三法 theme 和各维度 reasoning，归纳一句体现今日整体能量方向的主题（≤15字），不直接拼接原文。
 
 **data_anchor 汇总：**
-保留三法各自的 data_anchor，在输出中完整展示，作为可信度背书。
+保留三法各自的 data_anchor 原文，进入 5.1 渲染 JSON。
 
 ---
 
