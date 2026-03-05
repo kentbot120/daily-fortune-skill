@@ -131,27 +131,7 @@ jq '[.jobs[] | select(.enabled==true) | {id, name, description, schedule}]' \
 
 提取结果：每个任务的 `name`（用于晨报引用）和触发时间。
 
-**B. 昨日任务完成情况**
-
-对每个 cron 任务，读取其运行日志，统计昨日完成率和状态：
-
-```bash
-# 取昨日（UTC）的运行记录，统计 ok/error/skipped
-YESTERDAY=$(date -v-1d +%Y-%m-%d 2>/dev/null || date -d yesterday +%Y-%m-%d)
-for jobId in $(jq -r '.jobs[].id' ~/.openclaw/cron/jobs.json); do
-  logFile=~/.openclaw/cron/runs/${jobId}.jsonl
-  [ -f "$logFile" ] && jq -r --arg d "$YESTERDAY" \
-    'select(.ts > 0) | . as $e | ($e.ts/1000 | strftime("%Y-%m-%d")) | select(. == $d) | [$e.status, $e.summary] | @tsv' \
-    "$logFile"
-done
-```
-
-从结果感知昨日整体状态：
-- 完成率 >80% → 昨日高效，用户状态良好
-- 有 error 记录 → 昨日有卡点，今日建议先清积压
-- 完成率 <50% → 昨日偏懈，今日适合轻量启动
-
-**C. 近期聊天主题 + 活跃时间**
+**B. 近期聊天主题 + 活跃时间**
 
 读取近 3 天的 session 文件，提取用户消息内容和时间分布：
 
@@ -172,16 +152,28 @@ done
 - 消息主要话题 → 近期关注的工作/项目/问题（用于个性化建议）
 - 消息时间分布 → 用户通常在哪些时段活跃（早鸟/夜猫子，用于时机建议）
 
-**D. 长期记忆**
+**C. Memory 文件**
 
-在 memory 中搜索用户的持续目标、偏好和近期重要事件：
+直接读取 workspace 下的记忆文件（路径来自系统提示的 workspace 字段，默认 `~/.openclaw/workspace/`）：
 
+```bash
+# 主记忆文件（二选一，优先 MEMORY.md）
+cat ~/.openclaw/workspace/MEMORY.md 2>/dev/null || \
+cat ~/.openclaw/workspace/memory.md 2>/dev/null
+
+# 用户信息/偏好
+cat ~/.openclaw/workspace/USER.md 2>/dev/null
+
+# 心跳记录（近期状态/情绪/活跃度）
+cat ~/.openclaw/workspace/HEARTBEAT.md 2>/dev/null
 ```
-memory search: "用户目标 项目 计划 习惯"
-memory search: "近期 遇到 问题 担心"
-```
 
-取前 5 条相关记忆，作为个性化建议的背景。
+从这些文件提取：
+- 用户的持续目标、正在推进的项目
+- 近期情绪状态、压力点或关注的事项
+- 长期习惯、偏好风格（影响建议的语气和侧重点）
+
+如果 workspace 路径不是默认值，从系统提示 `workspace=<path>` 字段读取实际路径。
 
 ### 2.3 本地命理计算
 
