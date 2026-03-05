@@ -163,14 +163,10 @@ cat ~/.openclaw/workspace/memory.md 2>/dev/null
 
 # 用户信息/偏好
 cat ~/.openclaw/workspace/USER.md 2>/dev/null
-
-# 心跳记录（近期状态/情绪/活跃度）
-cat ~/.openclaw/workspace/HEARTBEAT.md 2>/dev/null
 ```
 
 从这些文件提取：
 - 用户的持续目标、正在推进的项目
-- 近期情绪状态、压力点或关注的事项
 - 长期习惯、偏好风格（影响建议的语气和侧重点）
 
 如果 workspace 路径不是默认值，从系统提示 `workspace=<path>` 字段读取实际路径。
