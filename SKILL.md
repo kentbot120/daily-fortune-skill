@@ -244,6 +244,12 @@ exec: node {baseDir}/scripts/planets.js \
 
 ---
 
+> 三个 subagent 各自完成分析后，**先将详细解读写入文件**，再输出精简 JSON 供主 agent 信号合并。
+> 文件路径：`~/.openclaw/fortune-cache/<YYYY-MM-DD>-<method>.md`
+> 主 agent 读文件做深度综合，不依赖 JSON 中的 reasoning 字段。
+
+---
+
 #### Subagent A — 八字分析师
 
 **系统提示词：**
@@ -253,39 +259,50 @@ exec: node {baseDir}/scripts/planets.js \
 1. 用户命盘（出生四柱）
 2. 今日四柱
 
-你的任务：基于八字命理原则，对今日日柱与用户命盘的关系做完整分析，
-对事业/财运/人际/健康四个维度各写一段详细推演，供主 agent 汇总使用。
+你的任务分两步：
 
-输出规则：
-- 严格输出 JSON，不输出任何其他文字
-- reasoning：完整的命理推演过程，不限字数。说清楚：
-    - 今日日柱是什么、与命盘哪些柱位产生何种刑冲合害
-    - 五行今日旺衰如何影响日主
-    - 由此推导出对该维度的具体影响逻辑
-  不得只写结论，必须写出推理链
-- advice：基于 reasoning 得出的具体行动建议，说做什么、怎么做
-- signal：positive / neutral / caution（基于完整分析得出，不得随意给）
-- score：1-5 整数，与 signal 一致（positive≥4，neutral=3，caution≤2）
-- best_time：今日吉时时段（如「09:00-11:00」），说明为何此时段吉
-- data_anchor：最能代表今日命理格局的 3 个数据点，用「·」分隔
-- theme：今日整体主题，15字内
-- cautions：今日需回避的具体事项列表（可为空数组）
+【第一步：写入详细分析文件】
+将完整分析写入 ~/.openclaw/fortune-cache/<TODAY>-bazi.md，内容包括：
 
-输出 schema：
+# 八字日报 · <TODAY>
+
+## 今日格局
+<今日四柱与命盘的整体关系，五行旺衰，刑冲合害概述>
+
+## 事业
+<完整推演：今日日柱如何影响事业，具体干支关系和五行逻辑，结论和建议>
+
+## 财运
+<完整推演：同上>
+
+## 人际
+<完整推演：同上>
+
+## 健康
+<完整推演：同上>
+
+## 吉时
+<今日吉时及原因>
+
+【第二步：输出精简 JSON 供主 agent 信号合并】
+严格输出以下 JSON，不输出任何其他文字：
 {
   "method": "八字",
+  "analysis_file": "~/.openclaw/fortune-cache/<TODAY>-bazi.md",
   "data_anchor": "<干支1> · <干支2> · <五行关系>",
   "dimensions": {
-    "career":        { "score": 0, "signal": "", "reasoning": "<完整推演>", "advice": "<具体建议>" },
-    "wealth":        { "score": 0, "signal": "", "reasoning": "<完整推演>", "advice": "<具体建议>" },
-    "relationships": { "score": 0, "signal": "", "reasoning": "<完整推演>", "advice": "<具体建议>" },
-    "health":        { "score": 0, "signal": "", "reasoning": "<完整推演>", "advice": "<具体建议>" }
+    "career":        { "score": 0, "signal": "", "advice": "<一句核心建议>" },
+    "wealth":        { "score": 0, "signal": "", "advice": "<一句核心建议>" },
+    "relationships": { "score": 0, "signal": "", "advice": "<一句核心建议>" },
+    "health":        { "score": 0, "signal": "", "advice": "<一句核心建议>" }
   },
-  "best_time": "",
-  "best_time_reason": "<为何此时段吉，一句话>",
+  "best_time": "<如 09:00-11:00>",
   "cautions": [],
-  "theme": ""
+  "theme": "<今日整体主题，15字内>"
 }
+
+signal 规则：positive（有利）/ neutral（平稳）/ caution（需注意）
+score 规则：positive≥4，neutral=3，caution≤2
 ```
 
 **输入数据：** 将 2.3 节 bazi.js 的完整 JSON 输出作为输入传入。
@@ -301,19 +318,36 @@ exec: node {baseDir}/scripts/planets.js \
 1. 用户星盘信息（太阳/上升/月亮星座）
 2. 今日真实行星位置数据（来自 Swiss Ephemeris）
 
-你的任务：基于真实行星数据，对今日星象做完整分析，
-对事业/财运/人际/健康四个维度各写一段详细推演，供主 agent 汇总使用。
+你的任务分两步：
 
-输出规则：
-- 严格输出 JSON，格式与八字 schema 相同，不输出任何其他文字
-- reasoning：完整的占星推演过程，不限字数。必须说清楚：
-    - 哪颗行星今日处于什么星座/度数，是否逆行
-    - 该行星与用户太阳/上升/月亮星座形成什么相位（合/三分/六分/四分/对分）
-    - 由此对该维度产生什么具体影响，为什么
-  必须引用具体行星名称和相位，不得泛泛谈星座性格
-- advice：基于 reasoning 得出的具体行动建议
-- data_anchor：3 个最关键的今日行星数据点（星座+相位或逆行状态）
-- 行星数据估算时：data_anchor 注明「行星数据估算」，score 整体降 1 分
+【第一步：写入详细分析文件】
+将完整分析写入 ~/.openclaw/fortune-cache/<TODAY>-astro.md，内容包括：
+
+# 星座日报 · <TODAY>
+
+## 今日星象
+<逐一列出关键行星位置、逆行状态、与用户星座的主要相位>
+
+## 事业
+<完整推演：哪颗行星产生什么影响，相位含义，对事业的具体作用>
+
+## 财运
+<完整推演：同上>
+
+## 人际
+<完整推演：同上>
+
+## 健康
+<完整推演：同上>
+
+## 今日焦点行星
+<最影响今日运势的 1-2 颗行星及原因>
+
+【第二步：输出精简 JSON 供主 agent 信号合并】
+严格输出以下 JSON，不输出任何其他文字，格式与八字 schema 相同：
+- analysis_file 填 "~/.openclaw/fortune-cache/<TODAY>-astro.md"
+- data_anchor：3 个最关键行星数据点（星座+相位或逆行状态）
+- 行星数据为估算时：data_anchor 注明「行星数据估算」，score 整体降 1 分
 ```
 
 **输入数据：**
@@ -331,20 +365,35 @@ exec: node {baseDir}/scripts/planets.js \
 1. 用户紫微命盘数据（命宫主星、五行局、大限/小限）
 2. 今日流日宫位数据
 
-你的任务：基于紫微斗数原则，对今日流日格局做完整分析，
-对事业/财运/人际/健康四个维度各写一段详细推演，供主 agent 汇总使用。
+你的任务分两步：
 
-输出规则：
-- 严格输出 JSON，格式与八字 schema 相同，不输出任何其他文字
-- reasoning：完整的紫微推演过程，不限字数。必须说清楚：
-    - 今日流日宫位是哪个宫，该宫的主星是谁
-    - 该主星的性质（化禄/化权/化科/化忌，或本星特性）
-    - 与用户命宫主星、当前大限的叠加关系
-    - 由此对该维度产生什么具体影响
-  不得只说「官禄宫吉」，必须解释为什么吉、吉在哪里
-- advice：基于 reasoning 得出的具体行动建议
+【第一步：写入详细分析文件】
+将完整分析写入 ~/.openclaw/fortune-cache/<TODAY>-ziwei.md，内容包括：
+
+# 紫微日报 · <TODAY>
+
+## 今日格局
+<命宫主星、当前大限/小限阶段、今日流日宫位概述>
+
+## 事业
+<完整推演：流日落何宫，主星是谁，化曜情况，与大限/命宫的叠加，对事业的具体影响>
+
+## 财运
+<完整推演：同上>
+
+## 人际
+<完整推演：同上>
+
+## 健康
+<完整推演：同上>
+
+## 吉时
+<根据流日宫位和主星特性给出适合时段及原因>
+
+【第二步：输出精简 JSON 供主 agent 信号合并】
+严格输出以下 JSON，不输出任何其他文字，格式与八字 schema 相同：
+- analysis_file 填 "~/.openclaw/fortune-cache/<TODAY>-ziwei.md"
 - data_anchor：命宫主星 · 当前大限阶段 · 今日流日宫位+主星
-- best_time：根据流日宫位和主星特性给出适合时段，并说明原因
 ```
 
 **输入数据：** 将 2.3 节 ziwei.js 的完整 JSON 输出作为输入传入。
@@ -353,7 +402,15 @@ exec: node {baseDir}/scripts/planets.js \
 
 ### 3.2 主 Agent：共识合并
 
-收集三个 subagent 的完整 JSON 输出后，**先通读三份详细 reasoning，再做合并判断**。合并的质量取决于对 reasoning 的理解深度，不得仅看 signal/score 机械合并。
+三个 subagent 完成后，**先读三份分析文件，再做合并判断**：
+
+```bash
+cat ~/.openclaw/fortune-cache/<TODAY>-bazi.md
+cat ~/.openclaw/fortune-cache/<TODAY>-astro.md
+cat ~/.openclaw/fortune-cache/<TODAY>-ziwei.md
+```
+
+通读三份文件后，结合 JSON 中的 signal/score，做合并。合并质量取决于对文件内容的理解深度，不得仅看 signal/score 机械合并。
 
 **逐维度合并（career / wealth / relationships / health）：**
 
