@@ -118,22 +118,70 @@ metadata:
 
 ### 2.2 读取 OpenClaw 上下文
 
-执行以下数据采集（并行进行，不要阻塞）：
+以下数据并行采集，agentId 从系统提示的 `agent=<id>` 字段读取。
 
 **A. 今日定时任务**
-查询今天预计运行的定时任务（名称、时间），用于时机建议。
 
-**B. 近期聊天主题**
-查询近期对话摘要或记忆，提取用户最近 3 天关注的主要话题（工作、健康、感情、项目等）。
+读取 `~/.openclaw/cron/jobs.json`，提取今日有效任务（enabled=true，schedule 时间落在今天）：
 
-**C. 活跃时间模式**
-从记忆或聊天记录中推断用户的通常活跃时段（早鸟型/夜猫子型）和精力节律。
+```bash
+jq '[.jobs[] | select(.enabled==true) | {id, name, description, schedule}]' \
+  ~/.openclaw/cron/jobs.json
+```
 
-**D. 昨日任务完成情况**
-查询昨日定时任务的执行记录，统计完成率，感知用户昨日状态（高效/普通/疲惫）。
+提取结果：每个任务的 `name`（用于晨报引用）和触发时间。
 
-**E. 长期记忆**
-读取 OpenClaw 记忆中与用户相关的长期偏好、重要事件、持续目标。
+**B. 昨日任务完成情况**
+
+对每个 cron 任务，读取其运行日志，统计昨日完成率和状态：
+
+```bash
+# 取昨日（UTC）的运行记录，统计 ok/error/skipped
+YESTERDAY=$(date -v-1d +%Y-%m-%d 2>/dev/null || date -d yesterday +%Y-%m-%d)
+for jobId in $(jq -r '.jobs[].id' ~/.openclaw/cron/jobs.json); do
+  logFile=~/.openclaw/cron/runs/${jobId}.jsonl
+  [ -f "$logFile" ] && jq -r --arg d "$YESTERDAY" \
+    'select(.ts > 0) | . as $e | ($e.ts/1000 | strftime("%Y-%m-%d")) | select(. == $d) | [$e.status, $e.summary] | @tsv' \
+    "$logFile"
+done
+```
+
+从结果感知昨日整体状态：
+- 完成率 >80% → 昨日高效，用户状态良好
+- 有 error 记录 → 昨日有卡点，今日建议先清积压
+- 完成率 <50% → 昨日偏懈，今日适合轻量启动
+
+**C. 近期聊天主题 + 活跃时间**
+
+读取近 3 天的 session 文件，提取用户消息内容和时间分布：
+
+```bash
+# Session 文件在 ~/.openclaw/agents/<agentId>/sessions/
+# 取最近 3 个 session 文件（按 mtime 排序）
+SESS_DIR=~/.openclaw/agents/<agentId>/sessions
+for f in $(ls -t "$SESS_DIR"/*.jsonl 2>/dev/null | head -3); do
+  # 提取 user 消息文本（近期话题）
+  jq -r 'select(.type=="message" and .message.role=="user") |
+    .message.content[]? | select(.type=="text") | .text' "$f" | head -20
+  # 提取消息时间戳（活跃时间段）
+  jq -r 'select(.type=="message" and .message.role=="user") | .timestamp' "$f"
+done
+```
+
+从结果推断：
+- 消息主要话题 → 近期关注的工作/项目/问题（用于个性化建议）
+- 消息时间分布 → 用户通常在哪些时段活跃（早鸟/夜猫子，用于时机建议）
+
+**D. 长期记忆**
+
+在 memory 中搜索用户的持续目标、偏好和近期重要事件：
+
+```
+memory search: "用户目标 项目 计划 习惯"
+memory search: "近期 遇到 问题 担心"
+```
+
+取前 5 条相关记忆，作为个性化建议的背景。
 
 ### 2.3 本地命理计算
 
@@ -384,21 +432,29 @@ exec: node {baseDir}/scripts/planets.js \
   "anchor_ziwei":      "<ziwei.js data_anchor 原文>",
   "anchor_ziwei_zh":   "<今日宫位含义白话，≤10字>",
 
-  "career_stars":  "<★☆组合，固定5格，如★★★★☆>",
-  "career_advice": "<具体建议，≤15字>",
-  "career_reason": "<引用干支/行星/宫位的依据，≤10字>",
+  "career_stars":    "<★☆组合，固定5格，如★★★★☆>",
+  "career_advice":   "<今日最核心建议，≤15字>",
+  "career_good_for": "<适合做的工作类型，≤12字，如「创意策划、对外沟通」>",
+  "career_avoid":    "<今日回避的工作类型，≤10字，如「签约、细节审查」>",
+  "career_reason":   "<引用干支/行星/宫位的依据，≤10字>",
 
-  "wealth_stars":  "<★☆组合，固定5格>",
-  "wealth_advice": "<具体建议，≤15字>",
-  "wealth_reason": "<引用干支/行星/宫位的依据，≤10字>",
+  "wealth_stars":    "<★☆组合，固定5格>",
+  "wealth_advice":   "<今日最核心建议，≤15字>",
+  "wealth_good_for": "<适合的财务动作，≤12字，如「跟进已有投资」>",
+  "wealth_avoid":    "<今日回避的财务动作，≤10字，如「新开仓、冲动消费」>",
+  "wealth_reason":   "<引用干支/行星/宫位的依据，≤10字>",
 
-  "relationships_stars":  "<★☆组合，固定5格>",
-  "relationships_advice": "<具体建议，≤15字>",
-  "relationships_reason": "<引用干支/行星/宫位的依据，≤10字>",
+  "relationships_stars":    "<★☆组合，固定5格>",
+  "relationships_advice":   "<今日最核心建议，≤15字>",
+  "relationships_good_for": "<适合处理的人际事项，≤12字>",
+  "relationships_avoid":    "<今日回避的人际行为，≤10字>",
+  "relationships_reason":   "<引用干支/行星/宫位的依据，≤10字>",
 
-  "health_stars":  "<★☆组合，固定5格>",
-  "health_advice": "<具体建议，≤15字>",
-  "health_reason": "<引用干支/行星/宫位的依据，≤10字>",
+  "health_stars":    "<★☆组合，固定5格>",
+  "health_advice":   "<今日最核心建议，≤15字>",
+  "health_good_for": "<适合的运动或恢复方式，≤12字>",
+  "health_avoid":    "<今日回避的行为，≤10字，如「熬夜、高强度决策」>",
+  "health_reason":   "<引用干支/行星/宫位的依据，≤10字>",
 
   "schedule": [
     "📌 <引用真实cron任务名+具体建议>",
@@ -412,6 +468,8 @@ exec: node {baseDir}/scripts/planets.js \
 **字段自查规则：**
 - `*_stars`：恰好 5 个字符，只含 ★ 和 ☆，不多不少
 - `*_reason`：必须含具体名称（干支如「丙火」「子水」，行星如「水星逆行」，宫位如「官禄宫」），禁止写「综合分析」
+- `*_good_for`：写具体行为类型，不得写「做好事」「注意细节」等空话
+- `*_avoid`：写具体回避项，不得写「注意」「小心」等模糊词
 - `anchor_*_zh`：普通人能看懂的语言，不得照抄 anchor 原文术语
 - `schedule`：必须引用真实任务名，禁止写「根据您的日程」「今日安排」等泛指
 
@@ -431,9 +489,16 @@ exec: node {baseDir}/scripts/planets.js \
 
 ━━━ 运势速览（★★★★★满分）━━━
 💼 事业  {career_stars}  {career_advice} · {career_reason}
+   ✓ {career_good_for}   ✗ {career_avoid}
+
 💰 财运  {wealth_stars}  {wealth_advice} · {wealth_reason}
+   ✓ {wealth_good_for}   ✗ {wealth_avoid}
+
 ❤️  人际  {relationships_stars}  {relationships_advice} · {relationships_reason}
+   ✓ {relationships_good_for}   ✗ {relationships_avoid}
+
 💪 健康  {health_stars}  {health_advice} · {health_reason}
+   ✓ {health_good_for}   ✗ {health_avoid}
 
 ━━━ 结合今日安排 ━━━
 {schedule}
